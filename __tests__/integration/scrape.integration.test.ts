@@ -1,29 +1,34 @@
-import { makeApiRequest } from './helpers';
+import { Notte } from '../../nodes/Notte/Notte.node';
+import { createRealExecuteFunctions } from './helpers';
 
-describe('Scrape mode end-to-end', () => {
+describe('Node integration: Scrape mode', () => {
 	it(
-		'should scrape a page with structured output',
+		'should scrape a page via Notte.execute()',
 		async () => {
-			const result = await makeApiRequest<{
-				markdown: string;
-				structured: { success: boolean; data: { title: string } };
-			}>('POST', '/scrape', {
-				url: 'https://example.com',
-				instructions: 'Extract the page title',
-				response_format: {
-					type: 'object',
-					properties: {
-						title: { type: 'string' },
-					},
-					required: ['title'],
+			const { context } = createRealExecuteFunctions({
+				nodeParameters: {
+					mode: 'scrape',
+					scrapeUrl: 'https://example.com',
+					instructions: 'Extract the page title',
+					scrapeResponseFormat: JSON.stringify({
+						type: 'object',
+						properties: {
+							title: { type: 'string' },
+						},
+						required: ['title'],
+					}),
+					scrapeOptions: {},
 				},
 			});
 
-			expect(typeof result.markdown).toBe('string');
-			expect(result.markdown.length).toBeGreaterThan(0);
-			expect(result.structured).toBeDefined();
-			expect(result.structured.success).toBe(true);
-			expect(typeof result.structured.data.title).toBe('string');
+			const node = new Notte();
+			const result = await node.execute.call(context as never);
+
+			expect(result[0]).toHaveLength(1);
+			const json = result[0][0].json;
+			expect(json.success).toBe(true);
+			expect(json.markdown).toBeDefined();
+			expect(json.structured).toBeDefined();
 		},
 		60_000,
 	);

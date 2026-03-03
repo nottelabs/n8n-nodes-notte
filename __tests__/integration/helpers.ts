@@ -1,85 +1,76 @@
 /* eslint-disable @n8n/community-nodes/no-restricted-imports, @n8n/community-nodes/no-restricted-globals */
 import 'dotenv/config';
+import type { IDataObject, INode } from 'n8n-workflow';
 
-const BASE_URL = 'https://api.notte.cc';
+const mockNode: INode = {
+	id: 'integration-test-node',
+	name: 'Notte',
+	type: 'n8n-nodes-notte.notte',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
 
-export function getApiKey(): string {
+function getApiKey(): string {
 	const key = process.env.NOTTE_API_KEY;
 	if (!key) {
-		throw new Error('NOTTE_API_KEY is not set');
+		throw new Error('NOTTE_API_KEY is not set — cannot run integration tests');
 	}
 	return key;
 }
 
-function buildHeaders(auth: 'bearer' | 'both' = 'bearer'): Record<string, string> {
-	const headers: Record<string, string> = {
-		'Content-Type': 'application/json',
-		Authorization: `Bearer ${getApiKey()}`,
+export function createRealExecuteFunctions(overrides: {
+	nodeParameters?: Record<string, unknown>;
+} = {}) {
+	const nodeParameters = overrides.nodeParameters ?? {};
+	const apiKey = getApiKey();
+
+	const credentials: IDataObject = {
+		apiKey,
+		baseUrl: 'https://api.notte.cc',
 	};
-	if (auth === 'both') {
-		headers['x-notte-api-key'] = getApiKey();
-	}
-	return headers;
-}
 
-export async function makeApiRequest<T = unknown>(
-	method: string,
-	endpoint: string,
-	body?: Record<string, unknown>,
-	qs?: Record<string, string>,
-	auth: 'bearer' | 'both' = 'bearer',
-): Promise<T> {
-	const url = new URL(`${BASE_URL}${endpoint}`);
-	if (qs) {
-		for (const [key, value] of Object.entries(qs)) {
-			url.searchParams.set(key, value);
-		}
-	}
+	const context = {
+		getNodeParameter: jest.fn((name: string, _index: number, fallback?: unknown) => {
+			if (name in nodeParameters) {
+				return nodeParameters[name];
+			}
+			return fallback;
+		}),
+		getCredentials: jest.fn().mockResolvedValue(credentials),
+		getNode: jest.fn().mockReturnValue(mockNode),
+		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+		continueOnFail: jest.fn().mockReturnValue(false),
+		helpers: {
+			httpRequest: async (options: {
+				method: string;
+				url: string;
+				headers?: Record<string, string>;
+				body?: unknown;
+				qs?: Record<string, string>;
+			}) => {
+				const url = new URL(options.url);
+				if (options.qs) {
+					for (const [key, value] of Object.entries(options.qs)) {
+						url.searchParams.set(key, String(value));
+					}
+				}
 
-	const headers = buildHeaders(auth);
-	const jsonBody = body ? JSON.stringify(body) : undefined;
+				const response = await fetch(url.toString(), {
+					method: options.method,
+					headers: options.headers,
+					body: options.body ? JSON.stringify(options.body) : undefined,
+				});
 
-	// Handle redirects manually to preserve auth headers across origins
-	let response = await fetch(url.toString(), {
-		method,
-		headers,
-		body: jsonBody,
-		redirect: 'manual',
-	});
+				if (!response.ok) {
+					const text = await response.text();
+					throw new Error(`HTTP ${response.status}: ${text}`);
+				}
 
-	if (response.status >= 300 && response.status < 400) {
-		const location = response.headers.get('location');
-		if (location) {
-			response = await fetch(location, {
-				method,
-				headers,
-				body: jsonBody,
-			});
-		}
-	}
+				return response.json();
+			},
+		},
+	};
 
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`API ${method} ${endpoint} failed (${response.status}): ${text}`);
-	}
-
-	return response.json() as Promise<T>;
-}
-
-export async function pollUntilDone<T extends { status: string }>(
-	endpoint: string,
-	intervalMs = 3000,
-	maxAttempts = 40,
-): Promise<T> {
-	const terminalStatuses = new Set(['closed', 'failed', 'error', 'completed']);
-
-	for (let i = 0; i < maxAttempts; i++) {
-		const result = await makeApiRequest<T>('GET', endpoint);
-		if (terminalStatuses.has(result.status)) {
-			return result;
-		}
-		await new Promise((resolve) => setTimeout(resolve, intervalMs));
-	}
-
-	throw new Error(`Timed out waiting for ${endpoint} to reach terminal status`);
+	return { context };
 }

@@ -1,29 +1,30 @@
-import { makeApiRequest } from './helpers';
+import { Notte } from '../../nodes/Notte/Notte.node';
+import { createRealExecuteFunctions } from './helpers';
 
 const FUNCTION_ID = '9fb6d40e-c76a-4d44-a73a-aa7843f0f535';
 
-describe('Function mode end-to-end', () => {
+describe('Node integration: Function mode', () => {
 	it(
-		'should execute a function run successfully',
+		'should execute a function run via Notte.execute()',
 		async () => {
-			// POST /functions/{id}/runs/start requires both auth headers and workflow_id in body
-			// The API returns a 307 redirect to Lambda; our helper follows it preserving headers
-			const result = await makeApiRequest<{
-				function_run_id: string;
-				status: string;
-			}>(
-				'POST',
-				`/functions/${FUNCTION_ID}/runs/start`,
-				{
-					variables: { url: 'https://notte.cc' },
-					workflow_id: FUNCTION_ID,
+			const { context } = createRealExecuteFunctions({
+				nodeParameters: {
+					mode: 'function',
+					functionId: FUNCTION_ID,
+					variables: {
+						variableValues: [{ name: 'url', value: 'https://notte.cc' }],
+					},
+					functionOptions: { waitForCompletion: true, timeout: 120, pollInterval: 3 },
 				},
-				undefined,
-				'both',
-			);
+			});
 
-			expect(result.function_run_id).toBeDefined();
-			expect(result.status).toBe('closed');
+			const node = new Notte();
+			const result = await node.execute.call(context as never);
+
+			expect(result[0]).toHaveLength(1);
+			const json = result[0][0].json;
+			expect(json.success).toBe(true);
+			expect(json.status).toBe('closed');
 		},
 		120_000,
 	);

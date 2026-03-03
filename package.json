@@ -23,6 +23,7 @@
 		"lint:fix": "n8n-node lint --fix",
 		"release": "release-it",
 		"test": "jest --selectProjects unit",
+		"test:smoke": "jest --selectProjects smoke",
 		"test:integration": "jest --selectProjects integration",
 		"test:all": "jest"
 	},
