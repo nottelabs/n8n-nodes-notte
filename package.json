@@ -1,0 +1,50 @@
+{
+	"name": "n8n-nodes-notte",
+	"version": "0.1.0",
+	"description": "n8n community node for Notte - AI browser automation, web scraping, and workflow execution",
+	"license": "MIT",
+	"homepage": "https://notte.cc",
+	"keywords": [
+		"n8n-community-node-package"
+	],
+	"author": {
+		"name": "Notte Labs",
+		"email": "support@notte.cc"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nottelabs/notte-n8n-nodes"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "release-it"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/NotteApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Notte/Notte.node.js",
+			"dist/nodes/Notte/NotteTrigger.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.2.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
