@@ -1,9 +1,9 @@
-/* eslint-disable @n8n/community-nodes/no-restricted-globals */
 import {
 	notteApiRequest,
 	notteApiRequestWithPolling,
 	notteApiRequestWithRedirect,
 } from '../nodes/Notte/GenericFunctions';
+import { sleep } from 'n8n-workflow';
 import { createMockExecuteFunctions } from './helpers';
 
 // Mock n8n-workflow's sleep to avoid real delays in tests
@@ -131,23 +131,13 @@ describe('notteApiRequest', () => {
 });
 
 describe('notteApiRequestWithRedirect', () => {
-	let mockFetch: jest.SpyInstance;
-
-	afterEach(() => {
-		if (mockFetch) {
-			mockFetch.mockRestore();
-		}
-	});
-
-	it('makes request and returns JSON on success', async () => {
-		const { context } = createMockExecuteFunctions();
-
-		mockFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
-			ok: true,
-			status: 200,
-			json: async () => ({ result: 'ok' }),
-			headers: new Headers(),
-		} as Response);
+	it('makes request through n8n helper and returns body on success', async () => {
+		const { context, mockHttpRequest } = createMockExecuteFunctions();
+		mockHttpRequest.mockResolvedValueOnce({
+			statusCode: 200,
+			headers: {},
+			body: { result: 'ok' },
+		});
 
 		const result = await notteApiRequestWithRedirect.call(
 			context as never,
@@ -158,30 +148,36 @@ describe('notteApiRequestWithRedirect', () => {
 		);
 
 		expect(result).toEqual({ result: 'ok' });
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-
-		const [, fetchOptions] = mockFetch.mock.calls[0];
-		expect(fetchOptions.redirect).toBe('manual');
-		expect(fetchOptions.headers['x-notte-api-key']).toBe('test-key');
-		expect(fetchOptions.headers['Authorization']).toBe('Bearer test-api-key-123');
+		expect(mockHttpRequest).toHaveBeenCalledTimes(1);
+		expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: 'https://api.test.notte.cc/functions/fn1/runs/start',
+				method: 'POST',
+				body: { workflow_id: 'fn1' },
+				returnFullResponse: true,
+				disableFollowRedirect: true,
+				ignoreHttpStatusErrors: true,
+				headers: expect.objectContaining({
+					'x-notte-api-key': 'test-key',
+					Authorization: 'Bearer test-api-key-123',
+				}),
+			}),
+		);
 	});
 
-	it('follows 307 redirect preserving headers', async () => {
-		const { context } = createMockExecuteFunctions();
-
-		// First call returns 307 redirect
-		mockFetch = jest.spyOn(global, 'fetch')
+	it('follows redirect preserving headers via n8n helper', async () => {
+		const { context, mockHttpRequest } = createMockExecuteFunctions();
+		mockHttpRequest
 			.mockResolvedValueOnce({
-				ok: false,
-				status: 307,
-				headers: new Headers({ location: 'https://lambda.example.com/run' }),
-			} as Response)
+				statusCode: 307,
+				headers: { location: 'https://lambda.example.com/run' },
+				body: null,
+			})
 			.mockResolvedValueOnce({
-				ok: true,
-				status: 200,
-				json: async () => ({ redirected: true }),
-				headers: new Headers(),
-			} as Response);
+				statusCode: 200,
+				headers: {},
+				body: { redirected: true },
+			});
 
 		const result = await notteApiRequestWithRedirect.call(
 			context as never,
@@ -191,12 +187,17 @@ describe('notteApiRequestWithRedirect', () => {
 		);
 
 		expect(result).toEqual({ redirected: true });
-		expect(mockFetch).toHaveBeenCalledTimes(2);
-
-		// Second call should be to the redirect location with same headers
-		const [redirectUrl, redirectOptions] = mockFetch.mock.calls[1];
-		expect(redirectUrl).toBe('https://lambda.example.com/run');
-		expect(redirectOptions.headers['Authorization']).toBe('Bearer test-api-key-123');
+		expect(mockHttpRequest).toHaveBeenCalledTimes(2);
+		expect(mockHttpRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				url: 'https://lambda.example.com/run',
+				disableFollowRedirect: false,
+				headers: expect.objectContaining({
+					Authorization: 'Bearer test-api-key-123',
+				}),
+			}),
+		);
 	});
 });
 
@@ -240,14 +241,16 @@ describe('notteApiRequestWithPolling', () => {
 	});
 
 	it('throws on timeout', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({ status: 'active' });
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
 
-		// Use a very short timeout so it triggers immediately
-		jest.spyOn(Date, 'now')
-			.mockReturnValueOnce(0) // startTime
-			.mockReturnValueOnce(0) // first while check
-			.mockReturnValueOnce(10000); // second while check - exceeds timeout
+		const { context, mockHttpRequest } = createMockExecuteFunctions();
+		const mockedSleep = jest.mocked(sleep);
+
+		mockHttpRequest.mockResolvedValue({ status: 'active' });
+		mockedSleep.mockImplementation(async (ms?: number) => {
+			jest.advanceTimersByTime(ms ?? 0);
+		});
 
 		await expect(
 			notteApiRequestWithPolling.call(
@@ -255,12 +258,14 @@ describe('notteApiRequestWithPolling', () => {
 				'GET',
 				'/agents/123',
 				'status',
-				['closed'],
-				10,
-				100, // 0.1s timeout
+				['closed', 'error'],
+				1000,
+				2000,
 			),
-		).rejects.toThrow('Polling timed out');
+		).rejects.toThrow('Polling timed out after 2s waiting for /agents/123');
 
-		jest.restoreAllMocks();
+		expect(mockHttpRequest).toHaveBeenCalledTimes(2);
+		mockedSleep.mockResolvedValue(undefined);
+		jest.useRealTimers();
 	});
 });

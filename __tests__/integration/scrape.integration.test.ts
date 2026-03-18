@@ -27,8 +27,7 @@ describe('Node integration: Scrape mode', () => {
 			expect(result[0]).toHaveLength(1);
 			const json = result[0][0].json;
 			expect(json.success).toBe(true);
-			expect(json.markdown).toBeDefined();
-			expect(json.structured).toBeDefined();
+			expect(json.data).toBeDefined();
 		},
 		60_000,
 	);
