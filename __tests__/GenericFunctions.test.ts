@@ -3,6 +3,7 @@ import {
 	notteApiRequestWithPolling,
 	notteApiRequestWithRedirect,
 } from '../nodes/Notte/GenericFunctions';
+import { sleep } from 'n8n-workflow';
 import { createMockExecuteFunctions } from './helpers';
 
 // Mock n8n-workflow's sleep to avoid real delays in tests
@@ -237,5 +238,34 @@ describe('notteApiRequestWithPolling', () => {
 
 		expect(mockHttpRequest).toHaveBeenCalledTimes(3);
 		expect(result).toEqual({ status: 'closed', answer: 'result' });
+	});
+
+	it('throws on timeout', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
+
+		const { context, mockHttpRequest } = createMockExecuteFunctions();
+		const mockedSleep = jest.mocked(sleep);
+
+		mockHttpRequest.mockResolvedValue({ status: 'active' });
+		mockedSleep.mockImplementation(async (ms?: number) => {
+			jest.advanceTimersByTime(ms ?? 0);
+		});
+
+		await expect(
+			notteApiRequestWithPolling.call(
+				context as never,
+				'GET',
+				'/agents/123',
+				'status',
+				['closed', 'error'],
+				1000,
+				2000,
+			),
+		).rejects.toThrow('Polling timed out after 2s waiting for /agents/123');
+
+		expect(mockHttpRequest).toHaveBeenCalledTimes(2);
+		mockedSleep.mockResolvedValue(undefined);
+		jest.useRealTimers();
 	});
 });

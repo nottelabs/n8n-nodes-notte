@@ -115,7 +115,10 @@ export async function notteApiRequestWithRedirect(
 
 	if (response.statusCode >= 300 && response.statusCode < 400) {
 		const locationHeader = getResponseHeader(response.headers, 'location');
-		const location = locationHeader ? new URL(locationHeader, options.url).toString() : undefined;
+		const redirectBaseUrl = options.url ?? `${baseUrl}${endpoint}`;
+		const location = locationHeader
+			? new URL(locationHeader, redirectBaseUrl).toString()
+			: undefined;
 
 		if (location) {
 			response = (await this.helpers.httpRequest({
