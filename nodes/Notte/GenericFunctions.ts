@@ -41,7 +41,9 @@ export async function notteApiRequest(
 	}
 
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call(this, 'notteApi', options);
+		const httpRequestWithAuthentication = this.helpers.httpRequestWithAuthentication.bind(this);
+
+		return await httpRequestWithAuthentication('notteApi', options);
 	} catch (error: unknown) {
 		const err = error as { response?: { data?: unknown }; message?: string };
 		const detail = err.response?.data
@@ -109,11 +111,9 @@ export async function notteApiRequestWithRedirect(
 		options.body = body;
 	}
 
-	let response = (await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		'notteApi',
-		options,
-	)) as IN8nHttpFullResponse;
+	const httpRequestWithAuthentication = this.helpers.httpRequestWithAuthentication.bind(this);
+
+	let response = (await httpRequestWithAuthentication('notteApi', options)) as IN8nHttpFullResponse;
 
 	if (response.statusCode >= 300 && response.statusCode < 400) {
 		const locationHeader = getResponseHeader(response.headers, 'location');
@@ -123,7 +123,7 @@ export async function notteApiRequestWithRedirect(
 			: undefined;
 
 		if (location) {
-			response = (await this.helpers.httpRequestWithAuthentication.call(this, 'notteApi', {
+			response = (await httpRequestWithAuthentication('notteApi', {
 				...options,
 				url: location,
 				disableFollowRedirect: false,

@@ -38,6 +38,7 @@ export class NotteApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'x-notte-api-key': '={{$credentials.apiKey}}',
 			},
 		},
 	};

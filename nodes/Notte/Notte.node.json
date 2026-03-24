@@ -1,4 +1,13 @@
 {
 	"node": "n8n-nodes-notte.notte",
-	"nodeVersion": "1.0"
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.notte.cc"
+			}
+		]
+	}
 }
