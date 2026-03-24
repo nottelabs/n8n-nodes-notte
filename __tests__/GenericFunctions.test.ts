@@ -17,12 +17,13 @@ jest.mock('n8n-workflow', () => {
 
 describe('notteApiRequest', () => {
 	it('builds correct URL from credentials baseUrl + endpoint', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({ status: 'ok' });
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
 		await notteApiRequest.call(context as never, 'GET', '/health');
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				url: 'https://api.test.notte.cc/health',
 				method: 'GET',
@@ -30,30 +31,33 @@ describe('notteApiRequest', () => {
 		);
 	});
 
-	it('sets Authorization Bearer header from apiKey', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({});
+	it('delegates authentication to the credential helper', async () => {
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'GET', '/test');
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				headers: expect.objectContaining({
-					Authorization: 'Bearer test-api-key-123',
+					Accept: 'application/json',
+					'Content-Type': 'application/json',
 				}),
 			}),
 		);
 	});
 
 	it('passes body when provided', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({});
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'POST', '/sessions', {
 			headless: true,
 		});
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				body: { headless: true },
 			}),
@@ -61,24 +65,25 @@ describe('notteApiRequest', () => {
 	});
 
 	it('does not include body when empty', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({});
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'GET', '/test', {});
 
-		const callArgs = mockHttpRequest.mock.calls[0][0];
+		const callArgs = mockHttpRequestWithAuthentication.mock.calls[0][1];
 		expect(callArgs.body).toBeUndefined();
 	});
 
 	it('passes query string params when provided', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({});
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'GET', '/test', undefined, {
 			only_unread: true,
 		});
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				qs: { only_unread: true },
 			}),
@@ -86,8 +91,8 @@ describe('notteApiRequest', () => {
 	});
 
 	it('throws NodeOperationError on API failure with detail', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockRejectedValue({
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockRejectedValue({
 			response: { data: { error: 'Unauthorized' } },
 		});
 
@@ -97,14 +102,15 @@ describe('notteApiRequest', () => {
 	});
 
 	it('uses default baseUrl when credentials baseUrl is empty', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions({
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 			credentials: { apiKey: 'key', baseUrl: '' },
 		});
-		mockHttpRequest.mockResolvedValue({});
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'GET', '/health');
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				url: 'https://api.notte.cc/health',
 			}),
@@ -112,18 +118,18 @@ describe('notteApiRequest', () => {
 	});
 
 	it('merges extraHeaders into request headers', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({});
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({});
 
 		await notteApiRequest.call(context as never, 'POST', '/test', {}, undefined, {
 			'x-notte-api-key': 'extra-key',
 		});
 
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					'x-notte-api-key': 'extra-key',
-					Authorization: 'Bearer test-api-key-123',
 				}),
 			}),
 		);
@@ -132,8 +138,8 @@ describe('notteApiRequest', () => {
 
 describe('notteApiRequestWithRedirect', () => {
 	it('makes request through n8n helper and returns body on success', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValueOnce({
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValueOnce({
 			statusCode: 200,
 			headers: {},
 			body: { result: 'ok' },
@@ -144,12 +150,12 @@ describe('notteApiRequestWithRedirect', () => {
 			'POST',
 			'/functions/fn1/runs/start',
 			{ workflow_id: 'fn1' },
-			{ 'x-notte-api-key': 'test-key' },
 		);
 
 		expect(result).toEqual({ result: 'ok' });
-		expect(mockHttpRequest).toHaveBeenCalledTimes(1);
-		expect(mockHttpRequest).toHaveBeenCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'notteApi',
 			expect.objectContaining({
 				url: 'https://api.test.notte.cc/functions/fn1/runs/start',
 				method: 'POST',
@@ -158,16 +164,16 @@ describe('notteApiRequestWithRedirect', () => {
 				disableFollowRedirect: true,
 				ignoreHttpStatusErrors: true,
 				headers: expect.objectContaining({
-					'x-notte-api-key': 'test-key',
-					Authorization: 'Bearer test-api-key-123',
+					Accept: 'application/json',
+					'Content-Type': 'application/json',
 				}),
 			}),
 		);
 	});
 
 	it('follows redirect preserving headers via n8n helper', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication
 			.mockResolvedValueOnce({
 				statusCode: 307,
 				headers: { location: 'https://lambda.example.com/run' },
@@ -187,14 +193,16 @@ describe('notteApiRequestWithRedirect', () => {
 		);
 
 		expect(result).toEqual({ redirected: true });
-		expect(mockHttpRequest).toHaveBeenCalledTimes(2);
-		expect(mockHttpRequest).toHaveBeenNthCalledWith(
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 			2,
+			'notteApi',
 			expect.objectContaining({
 				url: 'https://lambda.example.com/run',
 				disableFollowRedirect: false,
 				headers: expect.objectContaining({
-					Authorization: 'Bearer test-api-key-123',
+					Accept: 'application/json',
+					'Content-Type': 'application/json',
 				}),
 			}),
 		);
@@ -203,8 +211,8 @@ describe('notteApiRequestWithRedirect', () => {
 
 describe('notteApiRequestWithPolling', () => {
 	it('returns response when terminal status reached', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest.mockResolvedValue({ status: 'closed', answer: 'done' });
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication.mockResolvedValue({ status: 'closed', answer: 'done' });
 
 		const result = await notteApiRequestWithPolling.call(
 			context as never,
@@ -220,8 +228,8 @@ describe('notteApiRequestWithPolling', () => {
 	});
 
 	it('polls multiple times until terminal status', async () => {
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
-		mockHttpRequest
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
+		mockHttpRequestWithAuthentication
 			.mockResolvedValueOnce({ status: 'active' })
 			.mockResolvedValueOnce({ status: 'active' })
 			.mockResolvedValueOnce({ status: 'closed', answer: 'result' });
@@ -236,7 +244,7 @@ describe('notteApiRequestWithPolling', () => {
 			5000,
 		);
 
-		expect(mockHttpRequest).toHaveBeenCalledTimes(3);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(3);
 		expect(result).toEqual({ status: 'closed', answer: 'result' });
 	});
 
@@ -244,10 +252,10 @@ describe('notteApiRequestWithPolling', () => {
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2024-01-01T00:00:00.000Z'));
 
-		const { context, mockHttpRequest } = createMockExecuteFunctions();
+		const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions();
 		const mockedSleep = jest.mocked(sleep);
 
-		mockHttpRequest.mockResolvedValue({ status: 'active' });
+		mockHttpRequestWithAuthentication.mockResolvedValue({ status: 'active' });
 		mockedSleep.mockImplementation(async (ms?: number) => {
 			jest.advanceTimersByTime(ms ?? 0);
 		});
@@ -264,7 +272,7 @@ describe('notteApiRequestWithPolling', () => {
 			),
 		).rejects.toThrow('Polling timed out after 2s waiting for /agents/123');
 
-		expect(mockHttpRequest).toHaveBeenCalledTimes(2);
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 		mockedSleep.mockResolvedValue(undefined);
 		jest.useRealTimers();
 	});

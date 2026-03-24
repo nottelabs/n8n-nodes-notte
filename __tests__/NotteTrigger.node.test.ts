@@ -23,14 +23,14 @@ describe('NotteTrigger Node', () => {
 
 	describe('poll - newEmail', () => {
 		it('calls correct endpoint for email event', async () => {
-			const { context, mockHttpRequest } = createMockPollFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockPollFunctions({
 				nodeParameters: {
 					event: 'newEmail',
 					personaId: 'per_abc',
 				},
 			});
 
-			mockHttpRequest.mockResolvedValue([
+			mockHttpRequestWithAuthentication.mockResolvedValue([
 				{
 					email_id: 'em_1',
 					subject: 'Welcome',
@@ -41,7 +41,8 @@ describe('NotteTrigger Node', () => {
 			const node = new NotteTrigger();
 			await node.poll.call(context as never);
 
-			expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+				'notteApi',
 				expect.objectContaining({
 					url: 'https://api.test.notte.cc/personas/per_abc/emails',
 				}),
@@ -49,14 +50,14 @@ describe('NotteTrigger Node', () => {
 		});
 
 		it('returns null when no new messages', async () => {
-			const { context, mockHttpRequest } = createMockPollFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockPollFunctions({
 				nodeParameters: {
 					event: 'newEmail',
 					personaId: 'per_abc',
 				},
 			});
 
-			mockHttpRequest.mockResolvedValue([]);
+			mockHttpRequestWithAuthentication.mockResolvedValue([]);
 
 			const node = new NotteTrigger();
 			const result = await node.poll.call(context as never);
@@ -66,7 +67,7 @@ describe('NotteTrigger Node', () => {
 
 		it('filters out already-seen messages', async () => {
 			const staticData = { lastSeen: '2026-01-01T10:00:00Z' };
-			const { context, mockHttpRequest } = createMockPollFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockPollFunctions({
 				nodeParameters: {
 					event: 'newEmail',
 					personaId: 'per_abc',
@@ -74,7 +75,7 @@ describe('NotteTrigger Node', () => {
 				staticData,
 			});
 
-			mockHttpRequest.mockResolvedValue([
+			mockHttpRequestWithAuthentication.mockResolvedValue([
 				{ email_id: 'em_old', subject: 'Old', created_at: '2026-01-01T09:00:00Z' },
 				{ email_id: 'em_new', subject: 'New', created_at: '2026-01-01T11:00:00Z' },
 			]);
@@ -89,7 +90,7 @@ describe('NotteTrigger Node', () => {
 
 		it('updates staticData.lastSeen to most recent timestamp', async () => {
 			const staticData = {};
-			const { context, mockHttpRequest } = createMockPollFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockPollFunctions({
 				nodeParameters: {
 					event: 'newEmail',
 					personaId: 'per_abc',
@@ -97,7 +98,7 @@ describe('NotteTrigger Node', () => {
 				staticData,
 			});
 
-			mockHttpRequest.mockResolvedValue([
+			mockHttpRequestWithAuthentication.mockResolvedValue([
 				{ email_id: 'em_1', subject: 'First', created_at: '2026-01-01T08:00:00Z' },
 				{ email_id: 'em_2', subject: 'Second', created_at: '2026-01-01T12:00:00Z' },
 				{ email_id: 'em_3', subject: 'Third', created_at: '2026-01-01T10:00:00Z' },
@@ -112,14 +113,14 @@ describe('NotteTrigger Node', () => {
 
 	describe('poll - newSms', () => {
 		it('calls correct endpoint for SMS event', async () => {
-			const { context, mockHttpRequest } = createMockPollFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockPollFunctions({
 				nodeParameters: {
 					event: 'newSms',
 					personaId: 'per_xyz',
 				},
 			});
 
-			mockHttpRequest.mockResolvedValue([
+			mockHttpRequestWithAuthentication.mockResolvedValue([
 				{
 					sms_id: 'sms_1',
 					body: 'Your code is 123456',
@@ -130,7 +131,8 @@ describe('NotteTrigger Node', () => {
 			const node = new NotteTrigger();
 			const result = await node.poll.call(context as never);
 
-			expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+				'notteApi',
 				expect.objectContaining({
 					url: 'https://api.test.notte.cc/personas/per_xyz/sms',
 				}),
