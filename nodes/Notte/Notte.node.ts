@@ -372,13 +372,11 @@ async function executeFunction(
 		runBody.variables = variables;
 	}
 
-	const credentials = await this.getCredentials('notteApi');
 	const runResponse = (await notteApiRequestWithRedirect.call(
 		this,
 		'POST',
 		`/functions/${functionId}/runs/start`,
 		runBody,
-		{ 'x-notte-api-key': credentials.apiKey as string },
 	)) as IDataObject;
 
 	const runId = runResponse.function_run_id as string;

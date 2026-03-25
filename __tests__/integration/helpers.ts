@@ -31,6 +31,51 @@ type TestHttpRequestOptions = {
 	ignoreHttpStatusErrors?: boolean;
 };
 
+async function performHttpRequest(options: TestHttpRequestOptions) {
+	const url = new URL(options.url);
+	if (options.qs) {
+		for (const [key, value] of Object.entries(options.qs)) {
+			url.searchParams.set(key, String(value));
+		}
+	}
+
+	const response = await fetch(url.toString(), {
+		method: options.method,
+		headers: options.headers,
+		body: options.body ? JSON.stringify(options.body) : undefined,
+		redirect: options.disableFollowRedirect ? 'manual' : 'follow',
+	});
+
+	const contentType = response.headers.get('content-type') ?? '';
+	const rawBody = await response.text();
+	let body: unknown = rawBody;
+
+	if (options.json || contentType.includes('application/json')) {
+		try {
+			body = rawBody ? JSON.parse(rawBody) : null;
+		} catch {
+			body = rawBody;
+		}
+	}
+
+	if (options.returnFullResponse) {
+		return {
+			statusCode: response.status,
+			headers: Object.fromEntries(response.headers.entries()),
+			body,
+		};
+	}
+
+	if (!response.ok && !options.ignoreHttpStatusErrors) {
+		throw {
+			message: `HTTP ${response.status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`,
+			response: { data: body },
+		};
+	}
+
+	return body;
+}
+
 export function createRealExecuteFunctions(overrides: {
 	nodeParameters?: Record<string, unknown>;
 } = {}) {
@@ -54,49 +99,23 @@ export function createRealExecuteFunctions(overrides: {
 		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 		continueOnFail: jest.fn().mockReturnValue(false),
 		helpers: {
-			httpRequest: async (options: TestHttpRequestOptions) => {
-				const url = new URL(options.url);
-				if (options.qs) {
-					for (const [key, value] of Object.entries(options.qs)) {
-						url.searchParams.set(key, String(value));
-					}
+			httpRequest: performHttpRequest,
+			httpRequestWithAuthentication: async (
+				credentialType: string,
+				options: TestHttpRequestOptions,
+			) => {
+				if (credentialType !== 'notteApi') {
+					throw new Error(`Unsupported credential type: ${credentialType}`);
 				}
 
-				const response = await fetch(url.toString(), {
-					method: options.method,
-					headers: options.headers,
-					body: options.body ? JSON.stringify(options.body) : undefined,
-					redirect: options.disableFollowRedirect ? 'manual' : 'follow',
+				return await performHttpRequest({
+					...options,
+					headers: {
+						...options.headers,
+						Authorization: `Bearer ${apiKey}`,
+						'x-notte-api-key': apiKey,
+					},
 				});
-
-				const contentType = response.headers.get('content-type') ?? '';
-				const rawBody = await response.text();
-				let body: unknown = rawBody;
-
-				if (options.json || contentType.includes('application/json')) {
-					try {
-						body = rawBody ? JSON.parse(rawBody) : null;
-					} catch {
-						body = rawBody;
-					}
-				}
-
-				if (options.returnFullResponse) {
-					return {
-						statusCode: response.status,
-						headers: Object.fromEntries(response.headers.entries()),
-						body,
-					};
-				}
-
-				if (!response.ok && !options.ignoreHttpStatusErrors) {
-					throw {
-						message: `HTTP ${response.status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`,
-						response: { data: body },
-					};
-				}
-
-				return body;
 			},
 		},
 	};
