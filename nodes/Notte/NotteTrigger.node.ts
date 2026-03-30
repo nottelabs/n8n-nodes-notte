@@ -24,6 +24,9 @@ export class NotteTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		// Trigger nodes have no execute() method and cannot be invoked as AI tools.
+		// Explicitly false (not removed) because the n8n community node linter requires the property.
+		usableAsTool: false,
 		credentials: [
 			{
 				name: 'notteApi',
