@@ -24,7 +24,6 @@ export class NotteTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		usableAsTool: true,
 		credentials: [
 			{
 				name: 'notteApi',
