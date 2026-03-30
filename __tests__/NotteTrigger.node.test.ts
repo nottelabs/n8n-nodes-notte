@@ -17,7 +17,7 @@ describe('NotteTrigger Node', () => {
 			expect(node.description.displayName).toBe('Notte Trigger');
 			expect(node.description.name).toBe('notteTrigger');
 			expect(node.description.polling).toBe(true);
-			expect(node.description.usableAsTool).toBe(true);
+			expect(node.description.usableAsTool).toBeUndefined();
 		});
 	});
 

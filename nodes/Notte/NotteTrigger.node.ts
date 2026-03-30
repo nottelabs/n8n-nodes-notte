@@ -9,6 +9,8 @@ import {
 
 import { notteApiRequest } from './GenericFunctions';
 
+// Trigger/polling nodes have no execute() method and cannot be invoked as AI tools.
+// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
 export class NotteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notte Trigger',
@@ -24,7 +26,6 @@ export class NotteTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		usableAsTool: true,
 		credentials: [
 			{
 				name: 'notteApi',
