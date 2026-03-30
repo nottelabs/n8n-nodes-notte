@@ -23,6 +23,7 @@ export function createMockExecuteFunctions(overrides: {
 	const credentials = overrides.credentials ?? defaultCredentials;
 
 	const mockHttpRequest = jest.fn();
+	const mockHttpRequestWithAuthentication = jest.fn();
 
 	const context = {
 		getNodeParameter: jest.fn((name: string, _index: number, fallback?: unknown) => {
@@ -37,10 +38,11 @@ export function createMockExecuteFunctions(overrides: {
 		continueOnFail: jest.fn().mockReturnValue(overrides.continueOnFail ?? false),
 		helpers: {
 			httpRequest: mockHttpRequest,
+			httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 		},
 	};
 
-	return { context, mockHttpRequest };
+	return { context, mockHttpRequest, mockHttpRequestWithAuthentication };
 }
 
 export function createMockPollFunctions(overrides: {
@@ -53,6 +55,7 @@ export function createMockPollFunctions(overrides: {
 	const staticData = overrides.staticData ?? {};
 
 	const mockHttpRequest = jest.fn();
+	const mockHttpRequestWithAuthentication = jest.fn();
 
 	const context = {
 		getNodeParameter: jest.fn((name: string) => {
@@ -63,8 +66,9 @@ export function createMockPollFunctions(overrides: {
 		getWorkflowStaticData: jest.fn().mockReturnValue(staticData),
 		helpers: {
 			httpRequest: mockHttpRequest,
+			httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 		},
 	};
 
-	return { context, mockHttpRequest, staticData };
+	return { context, mockHttpRequest, mockHttpRequestWithAuthentication, staticData };
 }

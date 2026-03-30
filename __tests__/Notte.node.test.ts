@@ -1,4 +1,3 @@
-/* eslint-disable @n8n/community-nodes/no-restricted-globals */
 import { Notte } from '../nodes/Notte/Notte.node';
 import { createMockExecuteFunctions } from './helpers';
 
@@ -23,7 +22,7 @@ describe('Notte Node', () => {
 
 	describe('Agent mode', () => {
 		it('creates session, starts agent, polls, and returns result', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Extract pricing info',
@@ -33,11 +32,11 @@ describe('Notte Node', () => {
 			});
 
 			// Session start
-			mockHttpRequest.mockResolvedValueOnce({ session_id: 'ses_123' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ session_id: 'ses_123' });
 			// Agent start
-			mockHttpRequest.mockResolvedValueOnce({ agent_id: 'agt_456' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ agent_id: 'agt_456' });
 			// Agent status (polling) - terminal
-			mockHttpRequest.mockResolvedValueOnce({
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({
 				status: 'closed',
 				success: true,
 				answer: 'Found pricing',
@@ -45,7 +44,7 @@ describe('Notte Node', () => {
 				task: 'Extract pricing info',
 			});
 			// Session cleanup
-			mockHttpRequest.mockResolvedValueOnce({});
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({});
 
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
@@ -60,12 +59,12 @@ describe('Notte Node', () => {
 			});
 
 			// Verify correct URLs
-			expect(mockHttpRequest.mock.calls[0][0].url).toContain('/sessions/start');
-			expect(mockHttpRequest.mock.calls[3][0].url).toContain('/sessions/ses_123/stop');
+			expect(mockHttpRequestWithAuthentication.mock.calls[0][1].url).toContain('/sessions/start');
+			expect(mockHttpRequestWithAuthentication.mock.calls[3][1].url).toContain('/sessions/ses_123/stop');
 		});
 
 		it('prepends https:// to URL without protocol', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Test',
@@ -74,21 +73,21 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ session_id: 'ses_1' });
-			mockHttpRequest.mockResolvedValueOnce({ agent_id: 'agt_1' });
-			mockHttpRequest.mockResolvedValueOnce({ status: 'closed', success: true });
-			mockHttpRequest.mockResolvedValueOnce({});
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ session_id: 'ses_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ agent_id: 'agt_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ status: 'closed', success: true });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({});
 
 			const node = new Notte();
 			await node.execute.call(context as never);
 
 			// The agent start call (2nd call) should have https:// prepended
-			const agentStartBody = mockHttpRequest.mock.calls[1][0].body;
+			const agentStartBody = mockHttpRequestWithAuthentication.mock.calls[1][1].body;
 			expect(agentStartBody.url).toBe('https://example.com');
 		});
 
 		it('passes optional agent params', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Login and scrape',
@@ -104,20 +103,20 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ session_id: 'ses_1' });
-			mockHttpRequest.mockResolvedValueOnce({ agent_id: 'agt_1' });
-			mockHttpRequest.mockResolvedValueOnce({ status: 'closed', success: true });
-			mockHttpRequest.mockResolvedValueOnce({});
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ session_id: 'ses_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ agent_id: 'agt_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ status: 'closed', success: true });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({});
 
 			const node = new Notte();
 			await node.execute.call(context as never);
 
 			// Session start should have proxies
-			const sessionBody = mockHttpRequest.mock.calls[0][0].body;
+			const sessionBody = mockHttpRequestWithAuthentication.mock.calls[0][1].body;
 			expect(sessionBody.proxies).toBe(true);
 
 			// Agent start should have all optional params
-			const agentBody = mockHttpRequest.mock.calls[1][0].body;
+			const agentBody = mockHttpRequestWithAuthentication.mock.calls[1][1].body;
 			expect(agentBody.max_steps).toBe(20);
 			expect(agentBody.vault_id).toBe('vlt_abc');
 			expect(agentBody.persona_id).toBe('per_def');
@@ -126,7 +125,7 @@ describe('Notte Node', () => {
 		});
 
 		it('cleans up session on agent error', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Fail task',
@@ -135,23 +134,23 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ session_id: 'ses_1' });
-			mockHttpRequest.mockRejectedValueOnce({ message: 'Agent start failed' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ session_id: 'ses_1' });
+			mockHttpRequestWithAuthentication.mockRejectedValueOnce({ message: 'Agent start failed' });
 			// Cleanup calls
-			mockHttpRequest.mockResolvedValueOnce({});
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({});
 
 			const node = new Notte();
 			await expect(node.execute.call(context as never)).rejects.toThrow();
 
 			// Should have attempted session cleanup (DELETE /sessions/ses_1)
-			const cleanupCalls = mockHttpRequest.mock.calls.filter(
-				(call) => call[0].method === 'DELETE',
+			const cleanupCalls = mockHttpRequestWithAuthentication.mock.calls.filter(
+				(call) => call[1].method === 'DELETE',
 			);
 			expect(cleanupCalls.length).toBeGreaterThan(0);
 		});
 
 		it('parses responseFormat JSON string', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Extract data',
@@ -162,15 +161,15 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ session_id: 'ses_1' });
-			mockHttpRequest.mockResolvedValueOnce({ agent_id: 'agt_1' });
-			mockHttpRequest.mockResolvedValueOnce({ status: 'closed', success: true });
-			mockHttpRequest.mockResolvedValueOnce({});
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ session_id: 'ses_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ agent_id: 'agt_1' });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ status: 'closed', success: true });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({});
 
 			const node = new Notte();
 			await node.execute.call(context as never);
 
-			const agentBody = mockHttpRequest.mock.calls[1][0].body;
+			const agentBody = mockHttpRequestWithAuthentication.mock.calls[1][1].body;
 			expect(agentBody.response_format).toEqual({
 				type: 'object',
 				properties: { name: { type: 'string' } },
@@ -180,7 +179,7 @@ describe('Notte Node', () => {
 
 	describe('Scrape mode', () => {
 		it('sends correct body to POST /scrape', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'scrape',
 					scrapeUrl: 'https://example.com/pricing',
@@ -190,7 +189,7 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({
 				markdown: '# Pricing',
 				structured: { plans: [] },
 			});
@@ -198,14 +197,15 @@ describe('Notte Node', () => {
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
 
-			expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+				'notteApi',
 				expect.objectContaining({
 					url: 'https://api.test.notte.cc/scrape',
 					method: 'POST',
 				}),
 			);
 
-			const body = mockHttpRequest.mock.calls[0][0].body;
+			const body = mockHttpRequestWithAuthentication.mock.calls[0][1].body;
 			expect(body.url).toBe('https://example.com/pricing');
 			expect(body.instructions).toBe('Extract plan names and prices');
 			expect(body.response_format).toEqual({ type: 'object' });
@@ -234,7 +234,7 @@ describe('Notte Node', () => {
 		});
 
 		it('applies optional scrape params', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'scrape',
 					scrapeUrl: 'https://example.com',
@@ -248,19 +248,19 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ markdown: '', structured: {} });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ markdown: '', structured: {} });
 
 			const node = new Notte();
 			await node.execute.call(context as never);
 
-			const body = mockHttpRequest.mock.calls[0][0].body;
+			const body = mockHttpRequestWithAuthentication.mock.calls[0][1].body;
 			expect(body.selector).toBe('.main-content');
 			expect(body.proxies).toBe(true);
 			expect(body.scrape_images).toBe(true);
 		});
 
 		it('omits optional instructions and response format when empty', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'scrape',
 					scrapeUrl: 'https://example.com',
@@ -270,12 +270,12 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({ markdown: '# Example', structured: {} });
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ markdown: '# Example', structured: {} });
 
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
 
-			const body = mockHttpRequest.mock.calls[0][0].body;
+			const body = mockHttpRequestWithAuthentication.mock.calls[0][1].body;
 			expect(body).not.toHaveProperty('instructions');
 			expect(body).not.toHaveProperty('response_format');
 			expect(result[0][0].json).toMatchObject({
@@ -287,7 +287,7 @@ describe('Notte Node', () => {
 
 	describe('Function mode', () => {
 		it('starts function run and polls until closed', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'function',
 					functionId: 'fn_abc123',
@@ -298,7 +298,7 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest
+			mockHttpRequestWithAuthentication
 				.mockResolvedValueOnce({
 					statusCode: 200,
 					headers: {},
@@ -313,9 +313,10 @@ describe('Notte Node', () => {
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
 
-			expect(mockHttpRequest).toHaveBeenCalledTimes(2);
-			expect(mockHttpRequest).toHaveBeenNthCalledWith(
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
 				1,
+				'notteApi',
 				expect.objectContaining({
 					url: 'https://api.test.notte.cc/functions/fn_abc123/runs/start',
 					method: 'POST',
@@ -324,8 +325,8 @@ describe('Notte Node', () => {
 						variables: { target_url: 'https://example.com' },
 					},
 					headers: expect.objectContaining({
-						'x-notte-api-key': 'test-api-key-123',
-						Authorization: 'Bearer test-api-key-123',
+						Accept: 'application/json',
+						'Content-Type': 'application/json',
 					}),
 					returnFullResponse: true,
 					disableFollowRedirect: true,
@@ -343,7 +344,7 @@ describe('Notte Node', () => {
 		});
 
 		it('returns immediately when waitForCompletion is false', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'function',
 					functionId: 'fn_abc123',
@@ -352,7 +353,7 @@ describe('Notte Node', () => {
 				},
 			});
 
-			mockHttpRequest.mockResolvedValueOnce({
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({
 				statusCode: 200,
 				headers: {},
 				body: { function_run_id: 'run_789' },
@@ -361,8 +362,9 @@ describe('Notte Node', () => {
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
 
-			expect(mockHttpRequest).toHaveBeenCalledTimes(1);
-			expect(mockHttpRequest).toHaveBeenCalledWith(
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
+				'notteApi',
 				expect.objectContaining({
 					url: 'https://api.test.notte.cc/functions/fn_abc123/runs/start',
 					method: 'POST',
@@ -381,7 +383,7 @@ describe('Notte Node', () => {
 
 	describe('Error handling', () => {
 		it('continueOnFail returns error object instead of throwing', async () => {
-			const { context, mockHttpRequest } = createMockExecuteFunctions({
+			const { context, mockHttpRequestWithAuthentication } = createMockExecuteFunctions({
 				nodeParameters: {
 					mode: 'agent',
 					task: 'Fail',
@@ -391,7 +393,7 @@ describe('Notte Node', () => {
 				continueOnFail: true,
 			});
 
-			mockHttpRequest.mockRejectedValue({ message: 'API down' });
+			mockHttpRequestWithAuthentication.mockRejectedValue({ message: 'API down' });
 
 			const node = new Notte();
 			const result = await node.execute.call(context as never);
