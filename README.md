@@ -2,6 +2,9 @@
 
 <div align="center">
   <p>
+    <strong><a href="https://n8n.io/integrations/notte-trigger/" target="_blank" rel="noopener noreferrer">Install the official Notte node on n8n.io →</a></strong>
+  </p>
+  <p>
     <a href="https://n8n.io/" target="_blank" rel="noopener noreferrer">n8n</a> community node for <strong>Notte</strong> — AI browser automation, web scraping, and workflow execution <br/>
     → Read more at: <a href="https://notte.cc?ref=github" target="_blank" rel="noopener noreferrer">Landing</a> • <a href="https://console.notte.cc/?ref=github" target="_blank" rel="noopener noreferrer">Console</a> • <a href="https://docs.notte.cc?ref=github" target="_blank" rel="noopener noreferrer">Docs</a> • <a href="https://x.com/nottecore?ref=github" target="_blank" rel="noopener noreferrer">X</a> • <a href="https://www.linkedin.com/company/nottelabsinc/?ref=github" target="_blank" rel="noopener noreferrer">LinkedIn</a>
   </p>
