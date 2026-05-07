@@ -1,6 +1,22 @@
-# n8n-nodes-notte
+# n8n-nodes-notte - Browser automation in your n8n workflows
 
-[n8n](https://n8n.io/) community node for [Notte](https://notte.cc) — AI browser automation, web scraping, and workflow execution.
+<div align="center">
+  <p>
+    <a href="https://n8n.io/" target="_blank" rel="noopener noreferrer">n8n</a> community node for <strong>Notte</strong> — AI browser automation, web scraping, and workflow execution <br/>
+    → Read more at: <a href="https://notte.cc?ref=github" target="_blank" rel="noopener noreferrer">Landing</a> • <a href="https://console.notte.cc/?ref=github" target="_blank" rel="noopener noreferrer">Console</a> • <a href="https://docs.notte.cc?ref=github" target="_blank" rel="noopener noreferrer">Docs</a> • <a href="https://x.com/nottecore?ref=github" target="_blank" rel="noopener noreferrer">X</a> • <a href="https://www.linkedin.com/company/nottelabsinc/?ref=github" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+  </p>
+</div>
+
+[![GitHub stars](https://img.shields.io/github/stars/nottelabs/n8n-nodes-notte?style=social)](https://github.com/nottelabs/n8n-nodes-notte/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/n8n-nodes-notte?color=blue)](https://www.npmjs.com/package/n8n-nodes-notte)
+[![n8n community node](https://img.shields.io/badge/n8n-community%20node-blue.svg)](https://docs.n8n.io/integrations/community-nodes/)
+
+---
+
+# What is n8n-nodes-notte?
+
+This package brings the full power of [notte.cc](https://notte.cc?ref=github) into your [n8n](https://n8n.io/) workflows — letting you run AI browser agents, scrape structured data, execute deployed Notte functions, and trigger workflows on persona emails or SMS, all from inside the n8n editor.
 
 ## Features
 
@@ -92,4 +108,13 @@ npm run dev
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the [MIT License](LICENSE).
+
+## Links
+
+- [Landing](https://notte.cc?ref=github)
+- [Console](https://console.notte.cc/?ref=github)
+- [Documentation](https://docs.notte.cc?ref=github)
+- [Main repository (nottelabs/notte)](https://github.com/nottelabs/notte)
+
+Copyright © 2026 Notte Labs, Inc.
