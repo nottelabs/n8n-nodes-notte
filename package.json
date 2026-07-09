@@ -48,7 +48,7 @@
 		"eslint": "9.32.0",
 		"jest": "^30.2.0",
 		"prettier": "3.6.2",
-		"release-it": "^19.2.4",
+		"release-it": "^20.2.1",
 		"ts-jest": "^29.4.6",
 		"typescript": "5.9.2"
 	},
