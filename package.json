@@ -25,7 +25,8 @@
 		"test": "jest --selectProjects unit",
 		"test:smoke": "jest --selectProjects smoke",
 		"test:integration": "jest --selectProjects integration",
-		"test:all": "jest"
+		"test:all": "jest",
+		"prepare": "husky"
 	},
 	"files": [
 		"dist"
@@ -46,7 +47,9 @@
 		"@types/jest": "^30.0.0",
 		"dotenv": "^17.3.1",
 		"eslint": "9.32.0",
+		"husky": "^9.1.7",
 		"jest": "^30.2.0",
+		"lint-staged": "^16.4.0",
 		"prettier": "3.6.2",
 		"release-it": "^19.2.4",
 		"ts-jest": "^29.4.6",
@@ -54,5 +57,10 @@
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*"
+	},
+	"lint-staged": {
+		"*.ts": [
+			"n8n-node lint --fix"
+		]
 	}
 }
