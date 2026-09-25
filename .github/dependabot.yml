@@ -4,7 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait before proposing a newly published release so a compromised or
+    # yanked version has time to be caught upstream. Security updates are
+    # exempt from cooldown.
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
