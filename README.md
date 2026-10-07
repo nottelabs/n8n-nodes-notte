@@ -73,6 +73,9 @@ You need a Notte API key. Get one at [notte.cc](https://notte.cc).
 
 ## Example Workflows
 
+### Scrape and summarize webpages (importable)
+[`examples/scrape-and-summarize.json`](examples/scrape-and-summarize.json): scrapes a listing page with Notte to get the latest article links, fetches each article in a real browser, and summarizes it with a chat model. No CSS selectors. Import it in n8n via **Import from URL** with the raw file link, then add your Notte and chat model credentials.
+
 ### Scheduled competitor scraping
 ```
 Schedule Trigger → Notte (Scrape: competitor.com/pricing) → Google Sheets
